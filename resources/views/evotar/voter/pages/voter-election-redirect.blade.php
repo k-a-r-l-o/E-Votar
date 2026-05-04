@@ -324,7 +324,7 @@
                         </div>
                     </div>
                 </div>
-
+                {{--
                 @if(!$isVerified)
                     <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
                         <div class="flex">
@@ -341,6 +341,9 @@
                         </div>
                     </div>
                 @endif
+                --}}
+
+
 
 
                 <div class="w-full sm:hidden px-4 mb-6 flex justify-center items-center"
@@ -368,10 +371,12 @@
                                 $hasEnded = $election->date_ended <= now();
                                 $hasStarted = $election->date_started <= now();
                                 $ongoing = $hasStarted && !$hasEnded;
-                                $canVote = $isVerified && $ongoing && !$hasVoted;
+                                // $canVote = $isVerified && $ongoing && !$hasVoted;
+                                $canVote = $ongoing && !$hasVoted;
                             @endphp
 
-                            @if(($hasStarted || $hasEnded) && $isVerified)
+                            {{-- @if(($hasStarted || $hasEnded) && $isVerified) --}}
+                            @if(($hasStarted || $hasEnded))
                             <a href="{{ route('dashboard', ['slug' => $election->slug]) }}">
                                                                         @endif
                                 <!-- Election Card - Entire card is clickable -->
@@ -386,6 +391,7 @@
                                 <div class="h-28 bg-gray-200 relative">
                                     <img alt="{{ $election->name }}" class="h-full w-full object-cover" src="{{ asset('storage/' . $election->image_path)  ?? asset('storage/assets/profile/cat_meme.jpg') }}"/>
 
+                                    {{--
                                     @if(!$isVerified && !$hasVoted && !$hasEnded)
                                         <!-- Not Verified Overlay -->
                                         <div class="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center">
@@ -397,6 +403,7 @@
                                             <span class="text-white font-bold text-[12px] text-center">Verification Required</span>
                                         </div>
                                     @endif
+                                    --}}
                                     @if(!$hasStarted)
                                         <!-- Not Started Overlay -->
                                         <div class="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center rounded-lg">
