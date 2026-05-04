@@ -17,9 +17,9 @@ class FacialVerificationMiddleware
     {
         $user = Auth::user();
 
-        if ($user && !session('face_verified')) {
-            return redirect()->route('face.verify');
-        }
+        // if ($user && !session('face_verified')) {
+        //     return redirect()->route('face.verify');
+        // }
 
         return $next($request);
     }

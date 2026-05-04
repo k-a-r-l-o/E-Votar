@@ -187,8 +187,20 @@ class VotingProcess extends Component
     /**
      * @throws Exception
      */
-    public function submitVotes(): void
+    public function submitVotes()
     {
+        // Check if user has already voted for this election
+        $alreadyVoted = Vote::where('user_id', auth()->id())
+            ->where('election_id', $this->election->id)
+            ->exists() ||
+            AbstainVote::where('user_id', auth()->id())
+                ->where('election_id', $this->election->id)
+                ->exists();
+
+        if ($alreadyVoted) {
+            return $this->redirect(route('voter.voting.confirm'));
+        }
+
         // Check for duplicates
         if ($this->hasDuplicateVotes()) {
             $this->showDuplicateErrorModal = true;
@@ -269,7 +281,7 @@ class VotingProcess extends Component
             'election_id' => $this->election->id,
             'election_name' => $this->election->name,
             'voter_id' => auth()->id(),
-            'voter_name' => auth()->user()->first_name . ' ' . auth()->user()->last_name,
+            'voter_name' => auth()->user()->first_name.' '.auth()->user()->last_name,
             'voter_program' => auth()->user()->program->name ?? 'N/A',
             'voter_major' => auth()->user()->programMajor->name ?? 'N/A',
             'votes' => $encryptedVoteDetails,
@@ -286,10 +298,10 @@ class VotingProcess extends Component
 
         try {
             // Encode the encrypted data into an image
-            $imagePath = storage_path('app/public/' . $this->election->image_path);
-            $outputFileName = auth()->user()->first_name . '_' . auth()->user()->last_name . '_' . $this->election->name . '_vote.png';
-            $relativePath = 'encoded_votes/' . $outputFileName;
-            $outputPath = storage_path('app/public/' . $relativePath);
+            $imagePath = storage_path('app/public/'.$this->election->image_path);
+            $outputFileName = auth()->user()->first_name.'_'.auth()->user()->last_name.'_'.$this->election->name.'_vote.png';
+            $relativePath = 'encoded_votes/'.$outputFileName;
+            $outputPath = storage_path('app/public/'.$relativePath);
 
             $encodedPath = SteganographyHelper::encode($imagePath, $encryptedData, $outputPath);
 
@@ -303,7 +315,7 @@ class VotingProcess extends Component
             ]);
 
         } catch (Exception $e) {
-            Log::error("Steganography failed: " . $e->getMessage());
+            Log::error("Steganography failed: ".$e->getMessage());
 
             VoterEncodeVote::create([
                 'user_id' => auth()->id(),
@@ -314,7 +326,7 @@ class VotingProcess extends Component
                 'error_message' => $e->getMessage()
             ]);
 
-            session()->flash('error', 'Vote submission failed during encoding: ' . $e->getMessage());
+            session()->flash('error', 'Vote submission failed during encoding: '.$e->getMessage());
             return;
         }
 
@@ -330,7 +342,7 @@ class VotingProcess extends Component
         // Reset selections and show success message
         event(new \App\Events\VoteTallyUpdated());
         $this->selectedCandidates = [];
-        logger()->info("🚀 Dispatching vote-submitted event for election ID: " . $this->election->id);
+        logger()->info("🚀 Dispatching vote-submitted event for election ID: ".$this->election->id);
         $this->dispatch('updateChartData', $this->election->id);
         session()->flash('success', 'Votes submitted successfully. Download your encoded vote receipt.');
         $this->redirect(route('voter.voting.confirm'));
@@ -383,8 +395,8 @@ class VotingProcess extends Component
                         $candidates = $electionPosition->candidates
                             ->where('election_id', $this->election->id)
                             ->filter(function ($candidate) {
-                                return $candidate->users->program_id === auth()->user()->program_id;
-                            });
+                            return $candidate->users->program_id === auth()->user()->program_id;
+                        });
 
                         // If separation by major is required for this position, filter candidates by major
                         if ($separateByMajor) {

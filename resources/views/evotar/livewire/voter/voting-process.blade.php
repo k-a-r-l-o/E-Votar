@@ -12,7 +12,8 @@
                 this.selectedCandidates[input.name] = input.value;
             });
             return this.selectedCandidates;
-        }
+        },
+        loadingConfirm: false
      }">
     <div class="mb-4">
         <h2 class="text-center uppercase text-[18px] font-bold">{{ $election->name }}</h2>
@@ -131,7 +132,7 @@
                                                 <div class="mt-2 px-2 max-w-[250px]">
                                                     <p class="text-[8px] italic text-center leading-tight overflow-hidden text-ellipsis whitespace-nowrap"
                                                        title="{{ $candidate->description ?: 'No motto/advocacy provided' }}">
-                                                        {{ $candidate->description ? '“'.$candidate->description.'”' : 'No motto/advocacy provided' }}
+                                                        {{ $candidate->description ? '"'.$candidate->description.'"' : 'No motto/advocacy provided' }}
                                                     </p>
                                                 </div>
                                             </div>
@@ -390,8 +391,12 @@
 
             <div>
                 <div class="mt-4 flex justify-end">
-                    <button @click="$wire.submitVotes()" class="px-4 py-2 text-[12px] bg-green-600 text-white rounded">
-                        Confirm
+                    <button
+                        @click="loadingConfirm = true; $wire.submitVotes().finally(() => loadingConfirm = false)"
+                        x-bind:disabled="loadingConfirm"
+                        class="px-4 py-2 text-[12px] bg-green-600 text-white rounded flex items-center justify-center min-w-[100px]">
+                        <span x-show="!loadingConfirm">Confirm</span>
+                        <span x-show="loadingConfirm" class="animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4"></span>
                     </button>
                     <button @click="$wire.showSummaryModal = false"
                             class="ml-2 px-4 py-2 text-[12px] bg-gray-500 text-white rounded">
