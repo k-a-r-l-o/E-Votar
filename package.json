@@ -3,6 +3,7 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
+        "postbuild": "composer install",
         "dev": "vite"
     },
     "devDependencies": {

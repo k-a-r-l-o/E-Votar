@@ -45,6 +45,7 @@ class AddElection extends Component
     protected $messages = [
         'selectedPositions.required' => 'Please select at least one position.',
         'electionImage.max' => 'The election image must not exceed 12MB.',
+        'electionImage.mimes' => 'Only PNG images are allowed to ensure the security of vote receipts.',
     ];
     protected $rules = [
         'election_name' => 'required|string|max:255',

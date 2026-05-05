@@ -297,9 +297,20 @@ class VotingProcess extends Component
         $encryptedData = EncryptionHelper::encrypt($jsonData);
 
         try {
+            // Ensure output directory exists
+            $encodedVotesDir = storage_path('app/public/encoded_votes');
+            if (!file_exists($encodedVotesDir)) {
+                mkdir($encodedVotesDir, 0775, true);
+            }
+
             // Encode the encrypted data into an image
             $imagePath = storage_path('app/public/'.$this->election->image_path);
-            $outputFileName = auth()->user()->first_name.'_'.auth()->user()->last_name.'_'.$this->election->name.'_vote.png';
+
+            if (empty($this->election->image_path) || !file_exists($imagePath)) {
+                throw new Exception("The election does not have a valid banner image. Please contact an admin.");
+            }
+
+            $outputFileName = auth()->user()->first_name.'_'.auth()->user()->last_name.'_'.$this->election->name.'_vote_'.time().'.png';
             $relativePath = 'encoded_votes/'.$outputFileName;
             $outputPath = storage_path('app/public/'.$relativePath);
 

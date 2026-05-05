@@ -98,7 +98,13 @@
 
                                 <div x-data="{
                                                 isDragging: false,
-                                                previewUrl: @entangle('temporaryImageUrl')
+                                                previewUrl: @entangle('temporaryImageUrl'),
+                                                updatePreview(event) {
+                                                    const file = event.target.files[0];
+                                                    if (file && file.type === 'image/png') {
+                                                        this.previewUrl = URL.createObjectURL(file);
+                                                    }
+                                                }
                                             }"
                                      class="mt-4 w-full mb-1"
                                      wire:ignore>
@@ -112,6 +118,7 @@
                                          @dragleave.prevent="isDragging = false"
                                          @drop.prevent="isDragging = false;
                                             $refs.fileInput.files = event.dataTransfer.files;
+                                             updatePreview({target: $refs.fileInput});
                                             $refs.fileInput.dispatchEvent(new Event('change'))"
                                          @click="$refs.fileInput.click()">
 
@@ -130,7 +137,14 @@
                                         </div>
 
                                         <!-- Hidden File Input -->
-                                        <input type="file" class="hidden" id="electionImage" wire:model.live="electionImage" x-ref="fileInput">
+                                        <input type="file" class="hidden" id="electionImage" 
+                                                wire:model.live="electionImage" x-ref="fileInput"
+                                                @change="updatePreview($event)">
+
+                                         <p class="text-[10px] text-gray-400 mt-2 italic text-center">
+                                             Note: Only PNG images are supported for vote security.
+                                         </p>
+
 
                                         <!-- Progress Bar -->
                                         <div wire:loading wire:target="electionImage" class="w-full mt-2">

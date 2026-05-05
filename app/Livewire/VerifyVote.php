@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Helpers\SteganographyHelper;
 use App\Helpers\EncryptionHelper;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 
 class VerifyVote extends Component
 {
@@ -21,7 +22,7 @@ class VerifyVote extends Component
 
     public function mount($voteId)
     {
-        $this->user = auth()->user();
+        $this->user = Auth::user();
         $this->voteId = $voteId;
     }
 
@@ -34,7 +35,7 @@ class VerifyVote extends Component
             $encodedVote = VoterEncodeVote::findOrFail($this->voteId);
 
             // Verify the voter owns this vote
-            if (auth()->id() !== $encodedVote->user_id) {
+            if (Auth::id() !== $encodedVote->user_id) {
                 throw new \Exception('You can only verify your own votes.');
             }
 
@@ -43,11 +44,16 @@ class VerifyVote extends Component
                 throw new \Exception('Invalid verification password.');
             }
 
+            // Verify the encoded image path and status
+            if (empty($encodedVote->encoded_image_path) || $encodedVote->status === 'failed') {
+                throw new \Exception('No receipt image was generated for this vote due to a system error during submission.');
+            }
+
             // Get the image path
             $imagePath = storage_path('app/public/' . $encodedVote->encoded_image_path);
 
-            if (!file_exists($imagePath)) {
-                throw new \Exception('Vote receipt image not found.');
+            if (!is_file($imagePath)) {
+                throw new \Exception('Vote receipt image not found or is invalid.');
             }
 
             // Extract encrypted data from image
