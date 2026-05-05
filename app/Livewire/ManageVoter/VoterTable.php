@@ -216,6 +216,7 @@ class VoterTable extends Component
 
     public function import(): void
     {
+        set_time_limit(300); // Increase timeout to 5 minutes
         $this->validate([
             'importFile' => 'required|file|mimes:xlsx,xls,csv'
         ]);
@@ -251,15 +252,19 @@ class VoterTable extends Component
             })->toArray();
 
             if ($failureCount > 0) {
-                $this->importError = "Imported {$successCount} positions. {$failureCount} records had errors.";
-            }else {
+                $this->importError = "Imported {$successCount} voters. {$failureCount} records had errors.";
+                $this->dispatch('success-voter-import', [
+                    'title' => 'Import Partial Success',
+                    'message' => "Imported {$successCount} voter/s. {$failureCount} records were not imported due to errors."
+                ]);
+            } else {
                 $this->dispatch('success-voter-import', [
                     'title' => 'Import Complete',
-                    'message' => "Imported {$successCount} voter/s. " . ($failureCount ? "{$failureCount} records skipped." : "")
+                    'message' => "Imported {$successCount} voter/s successfully."
                 ]);
                 $this->reset('importFile');
-                $this->dispatch('voter-imported');
             }
+            $this->dispatch('voter-imported');
 
 
 
@@ -281,6 +286,7 @@ class VoterTable extends Component
 
     public function importVerificationUsers(): void
     {
+        set_time_limit(300); // Increase timeout to 5 minutes
         $this->validate([
             'importFileVerification' => 'required|file|mimes:xlsx,xls,csv'
         ]);
@@ -320,9 +326,9 @@ class VoterTable extends Component
 
             if ($failureCount > 0) {
                 $this->importErrorVerification = "Imported {$successCount} users. {$failureCount} records had errors.";
-                $this->dispatch('fail-voter-import', [
-                    'title' => 'Partial Import',
-                    'message' => $this->importErrorVerification
+                $this->dispatch('success-voter-import', [
+                    'title' => 'Import Partial Success',
+                    'message' => "Imported {$successCount} voters. {$failureCount} records were not imported due to errors."
                 ]);
             } else {
                 $this->dispatch('success-voter-import', [
@@ -330,8 +336,8 @@ class VoterTable extends Component
                     'message' => "Successfully imported {$successCount} voters."
                 ]);
                 $this->reset('importFileVerification');
-                $this->dispatch('voter-verified');
             }
+            $this->dispatch('voter-verified');
 
         } catch (\Exception $e) {
             $errorMessage = $this->getErrorMessage($e);

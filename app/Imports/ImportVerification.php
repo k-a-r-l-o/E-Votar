@@ -11,15 +11,23 @@ use Maatwebsite\Excel\Concerns\WithValidation;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
 use Maatwebsite\Excel\Concerns\SkipsErrors;
 use Maatwebsite\Excel\Concerns\Importable;
+use Maatwebsite\Excel\Concerns\WithLimit;
 
-class ImportVerification implements ToModel, WithHeadingRow, WithValidation, SkipsOnError
+class ImportVerification implements ToModel, WithHeadingRow, WithValidation, SkipsOnError, WithLimit
 {
     use Importable, SkipsErrors;
 
     private $rowCount = 0;
+    private $currentRow = 0;
 
     public function model(array $row)
     {
+        $this->currentRow++;
+
+        if ($this->currentRow > 100) {
+            return null;
+        }
+
         $row = $this->normalizeAndValidateRow($row);
 
         if (!is_array($row)) {
@@ -43,16 +51,20 @@ class ImportVerification implements ToModel, WithHeadingRow, WithValidation, Ski
             return null;
         }
 
-        $user->update([
-            'is_verified' => 1,
-            'verified_at' => Carbon::now(),
-            'verified_by' => auth()->id(),
-            'verification_expires_at' => Carbon::now()->addYear(),
-        ]);
+        try {
+            $user->update([
+                'is_verified' => 1,
+                'verified_at' => Carbon::now(),
+                'verified_by' => auth()->id(),
+                'verification_expires_at' => Carbon::now()->addYear(),
+            ]);
 
-        $this->rowCount++;
-
-        return $user;
+            $this->rowCount++;
+            return $user;
+        } catch (\Exception $e) {
+            Log::error("Failed to verify user in row: " . $e->getMessage());
+            return null;
+        }
     }
 
     protected function normalizeAndValidateRow(array $row): ?array
@@ -130,8 +142,35 @@ class ImportVerification implements ToModel, WithHeadingRow, WithValidation, Ski
         ];
     }
 
+    /**
+     * Use WithValidation's prepareForValidation to normalize keys
+     */
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            $data = $validator->getData();
+            $studentId = $data['student_id'] ?? null;
+            $email = $data['email'] ?? null;
+
+            if (empty($studentId) && empty($email)) {
+                $validator->errors()->add('user', 'Either student_id or email must be provided.');
+                return;
+            }
+
+            $user = $this->findUser($studentId, $email);
+            if (!$user) {
+                $validator->errors()->add('user', 'No matching voter found with the provided Student ID or Email.');
+            }
+        });
+    }
+
     public function getRowCount(): int
     {
         return $this->rowCount;
+    }
+
+    public function limit(): int
+    {
+        return 100;
     }
 }

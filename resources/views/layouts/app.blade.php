@@ -146,6 +146,18 @@
             $event.detail.message || 'Party Lists imported successfully.'
         );"
         ></div>
+        <div
+            x-on:success-voter-import.window="pushNotification('success',
+            $event.detail.title || 'Voter Import Success',
+            $event.detail.message || 'Voters imported successfully.'
+        );"
+        ></div>
+        <div
+            x-on:fail-voter-import.window="pushNotification('error',
+            $event.detail.title || 'Voter Import Failed',
+            $event.detail.message || 'Voter import failed.'
+        );"
+        ></div>
 
         <!-- Page Heading -->
 

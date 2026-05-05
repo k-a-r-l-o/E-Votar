@@ -116,7 +116,7 @@ class EditVoter extends Component
             'middle_initial' => 'nullable|string|max:1',
             'last_name' => 'required|string|max:255',
             'extension' => 'nullable|string|max:10',
-            'gender' => 'required|string|in:male,female,other',
+            'gender' => 'required|string|in:Male,Female,non-binary,prefer-not-to-say',
             'birth_date' => 'required|date',
             'email' => 'required|email|unique:users,email,' . $this->userId,
             'phone_number' => 'nullable|string|max:20',

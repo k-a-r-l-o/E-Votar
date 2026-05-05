@@ -18,9 +18,10 @@ use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
+use Maatwebsite\Excel\Concerns\WithLimit;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 
-class VotersImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure
+class VotersImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFailure, WithLimit
 {
     use SkipsFailures, Importable;
 
@@ -34,73 +35,58 @@ class VotersImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFa
     {
         $this->currentRow++;
 
+        if ($this->currentRow > 100) {
+            return null;
+        }
+
         $normalized = array_change_key_case($row, CASE_LOWER);
 
-        $requiredFields = ['first_name', 'last_name', 'email', 'campus', 'college', 'program'];
-
-        foreach ($requiredFields as $field) {
-            if (empty($normalized[$field])) {
-                $message = "Required field '{$field}' is missing or empty in row {$this->currentRow}";
-                throw new Exception($message);
-            }
-        }
-
+        // Fetch related models - validation in rules() ensures these exist, 
+        // so we can safely use first() or handle the null case without throwing an exception.
         $campus = Campus::where('name', $normalized['campus'])->first();
-        if (!$campus) {
-            $message = "Campus '{$normalized['campus']}' not found (Row {$this->currentRow})";
-            throw new Exception($message);
-        }
-
         $college = College::where('name', $normalized['college'])->first();
-        if (!$college) {
-            $message = "College '{$normalized['college']}' not found (Row {$this->currentRow})";
-            throw new Exception($message);
-        }
-
         $program = Program::where('name', $normalized['program'])->first();
-        if (!$program) {
-            $message = "Program '{$normalized['program']}' not found (Row {$this->currentRow})";
-            throw new Exception($message);
+
+        if (!$campus || !$college || !$program) {
+            return null; 
         }
 
         $major = null;
         if (!empty($normalized['program_major'])) {
             $major = program_major::where('name', $normalized['program_major'])->first();
-            if (!$major) {
-                $message = "Major '{$normalized['program_major']}' not found (Row {$this->currentRow})";
-                throw new Exception($message);
-            }
         }
 
         $this->rowCount++;
 
 
-        $user = new User([
-            'first_name'        => $normalized['first_name'],
-            'last_name'         => $normalized['last_name'],
-            'middle_initial'    => $normalized['middle_initial'] ?? null,
-            'extension'         => $normalized['extension'] ?? null,
-            'gender'            => $normalized['gender'] ?? null,
-            'birth_date'        => $this->parseBirthDate($row['birth_date'] ?? null),
-            'email'             => $normalized['email'],
-            'phone_number'      => $this->formatPhoneNumber($normalized['phone_number'] ?? null),
-            'year_level'        => $normalized['year_level'] ?? null,
-            'student_id'        => $normalized['student_id'] ?? null,
-            'campus_id'         => $campus->id,
-            'college_id'        => $college->id,
-            'program_id'        => $program->id,
-            'program_major_id'  => $major->id ?? null,
-            'account_status' => 'Pending Verification',
-            'username'          => $normalized['email'],
-            'password'          => Hash::make($normalized['student_id']),
-        ]);
+        try {
+            $user = new User([
+                'first_name'        => $normalized['first_name'],
+                'last_name'         => $normalized['last_name'],
+                'middle_initial'    => $normalized['middle_initial'] ?? null,
+                'extension'         => $normalized['extension'] ?? null,
+                'gender'            => $normalized['gender'] ?? null,
+                'birth_date'        => $this->parseBirthDate($row['birth_date'] ?? null),
+                'email'             => $normalized['email'],
+                'phone_number'      => $this->formatPhoneNumber($normalized['phone_number'] ?? null),
+                'year_level'        => $normalized['year_level'] ?? null,
+                'student_id'        => $normalized['student_id'] ?? null,
+                'campus_id'         => $campus->id,
+                'college_id'        => $college->id,
+                'program_id'        => $program->id,
+                'program_major_id'  => $major->id ?? null,
+                'account_status' => 'Pending Verification',
+                'username'          => $normalized['email'],
+                'password'          => Hash::make($normalized['student_id']),
+            ]);
 
-        $user->save();
-
-        // ✅ Assign role after saving
-        $user->assignRole('voter');
-
-        return $user;
+            $user->save();
+            $user->assignRole('voter');
+            return $user;
+        } catch (\Exception $e) {
+            Log::error("Failed to save voter in row {$this->currentRow}: " . $e->getMessage());
+            return null;
+        }
     }
 
 
@@ -258,5 +244,10 @@ class VotersImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFa
             'phone_number.min' => 'Phone number must be at least 10 digits',
             'student_id.unique' => 'This student ID already exists',
         ];
+    }
+
+    public function limit(): int
+    {
+        return 100;
     }
 }
