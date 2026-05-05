@@ -34,13 +34,13 @@ class AddCandidates extends Component
         $this->users = User::role('voter')
         ->where(function ($query) {
             $query->when($this->search, function ($query) {
-                $matchingUserIds = User::searchEncrypted($this->search, ['first_name', 'last_name'])
+                $matchingUserIds = User::searchEncrypted($this->search, ['first_name', 'last_name', 'student_id'])
                     ->pluck('id');
 
                 $query->whereIn('id', $matchingUserIds);
             });
         })
-            ->take(5)
+            ->take(10)
             ->get();
     }
 

@@ -130,7 +130,7 @@
                                             </span>
                             </div>
                             @can('create candidate')
-                                <livewire:manage-candidate.add-candidates/>
+                                <livewire:manage-candidate.add-candidates wire:key="add-candidate-button"/>
                             @endcan
                         </div>
 

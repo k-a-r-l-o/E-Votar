@@ -71,7 +71,7 @@
                                     x-on:blur="setTimeout(() => isOpen = false, 200)"
                                     autocomplete="off"
                                 />
-                                <div x-show="isOpen && search.length > 0" class="flex z-10 bg-white border border-gray-300 rounded-lg w-full max-h-[50px] overflow-auto mt-[5px] shadow-lg">
+                                <div x-show="isOpen && search.length > 0" class="flex z-10 bg-white border border-gray-300 rounded-lg w-full max-h-[300px] overflow-auto mt-[5px] shadow-lg">
                                     <div class="w-full">
                                         @if (!empty($users))
                                             @forelse ($users as $user)
@@ -81,7 +81,7 @@
                                                     x-on:click="isOpen = false"
                                                 >
                                                     {{ $user->first_name }} {{ $user->middle_initial }}. {{ $user->last_name }}
-                                                    - {{ $user->year_level }} {{ $user->program->name }}
+                                                    - ({{ $user->student_id }}) - {{ $user->year_level }} {{ $user->program->name }}
                                                 </div>
                                             @empty
                                                 <li class="px-4 py-2 text-gray-500">No results found.</li>
