@@ -231,6 +231,20 @@ class VotersImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnFa
         ];
     }
 
+    public function prepareForValidation($data, $index)
+    {
+        $normalized = array_change_key_case($data, CASE_LOWER);
+        if (isset($normalized['phone_number'])) {
+            $normalized['phone_number'] = preg_replace('/[^0-9]/', '', $normalized['phone_number']);
+
+            // Handle Excel stripping leading zero for formatting consistency
+            if (!empty($normalized['phone_number']) && !str_starts_with($normalized['phone_number'], '0') && strlen($normalized['phone_number']) === 10) {
+                $normalized['phone_number'] = '0' . $normalized['phone_number'];
+            }
+        }
+        return $normalized;
+    }
+
     public function customValidationMessages(): array
     {
         return [

@@ -144,7 +144,7 @@ class EditVoter extends Component
                 'gender' => $this->gender,
                 'birth_date' => $this->birth_date,
                 'email' => $this->email,
-                'phone_number' => $this->phone_number,
+                'phone_number' => preg_replace('/[^0-9]/', '', $this->phone_number),
                 'year_level' => $this->year_level,
                 'student_id' => $this->student_id,
                 'campus_id' => $this->campus_id,

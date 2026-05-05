@@ -124,7 +124,7 @@ class RegisterController extends Controller
             'gender' => $data['gender'],
             'birth_date' => $data['birth_date'],
             'email' => $data['email'],
-            'phone_number' => $data['phone_number'],
+            'phone_number' => preg_replace('/[^0-9]/', '', $data['phone_number']),
             'year_level' => $data['year_level'],
             'student_id' => $data['student_id'],
             'campus_id' => $data['campus'],
