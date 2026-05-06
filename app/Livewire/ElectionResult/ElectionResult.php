@@ -16,13 +16,13 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ElectionResult extends Component
 {
-    protected $listeners = ['candidate-created' => '$refresh'];
+    protected $listeners = [
+        'candidate-created' => '$refresh',
+        'global-election-updated' => 'handleGlobalElectionUpdate'
+    ];
     public $candidates = [];
-    public $filter;
     public $search = '';
     public $selectedElection;
-    public $selectedFilter;
-    public $elections;
     public $latestElection;
     public $hasStudentCouncilPositions;
     public $hasLocalCouncilPositions;
@@ -42,39 +42,26 @@ class ElectionResult extends Component
     {
         $this->selectedElection = session('selectedElection');
         if ($this->selectedElection) {
-            $election = Election::with('election_type')->find($this->selectedElection);
-            if ($election) {
-                if (in_array($election->election_type->name, ['Student Council Election', 'Local Council Election', 'Student and Local Council Election'])) {
-                    $this->filter = 'Student and Local Council Election';
-                } else {
-                    $this->filter = $election->election_type->name;
-                }
-            }
-        } else {
-            $this->filter = 'Student and Local Council Election';
+            $this->handleGlobalElectionUpdate($this->selectedElection);
         }
-
-        $this->fetchElection($this->filter);
         $this->councils = Council::all();
-        $this->selectedFilter = $this->filter;
+    }
+
+    public function handleGlobalElectionUpdate($electionId): void
+    {
+        $this->selectedElection = $electionId;
+        $this->fetchElection();
         $this->fetchCandidates();
         $this->fetchWinners();
+        if ($this->selectedElection) {
+            $this->fetchVoterTally($this->selectedElection);
+        }
     }
 
     public function updatedSearch(): void
     {
-        $this->fetchElection($this->filter);
         $this->fetchCandidates();
         $this->fetchWinners();
-    }
-
-    public function updatedFilter($value): void
-    {
-        $this->selectedElection = null;
-        $this->fetchElection($value);
-        $this->fetchCandidates();
-        $this->fetchWinners();
-        $this->dispatch('updateChartData', $this->selectedElection);
     }
 
     public function updatedSelectedElection(): void
@@ -86,7 +73,7 @@ class ElectionResult extends Component
 
             session(['selectedElection' => $this->selectedElection]);
 
-            $this->fetchElection($this->filter);
+            $this->fetchElection();
             $this->fetchCandidates();
             $this->fetchWinners();
             $this->fetchVoterTally($election->id);
@@ -134,6 +121,11 @@ class ElectionResult extends Component
 
     public function fetchCandidates(): void
     {
+        if (!$this->selectedElection) {
+            $this->candidates = collect();
+            return;
+        }
+
         $query = Candidate::with([
             'users',
             'users.program.council',
@@ -145,22 +137,13 @@ class ElectionResult extends Component
                     $q->select(DB::raw('COUNT(DISTINCT votes.user_id)'))
                         ->where('votes.election_id', $this->selectedElection);
                 }
-            ]);
+            ])
+            ->where('election_id', $this->selectedElection);
 
         if ($this->search) {
             $query->whereHas('users', function ($q) {
                 $q->where('first_name', 'like', '%' . $this->search . '%')
                     ->orWhere('last_name', 'like', '%' . $this->search . '%');
-            });
-        }
-
-        if ($this->selectedElection) {
-            $query->where('election_id', $this->selectedElection);
-        }
-
-        if ($this->filter) {
-            $query->whereHas('elections.election_type', function ($q) {
-                $q->where('name', $this->filter);
             });
         }
 
@@ -269,24 +252,23 @@ class ElectionResult extends Component
     }
 
 
-    public function fetchElection($filter): void
+    public function fetchElection(): void
     {
-//        $this->latestElection = Election::with('election_type')
-//            ->whereHas('election_type', function ($q) use ($filter) {
-//                $q->where('name', $filter);
-//            })
-//            ->orderBy('created_at', 'desc')
-//            ->first();
+        if (!$this->selectedElection) {
+            $this->latestElection = null;
+            $this->selectedElectionName = null;
+            $this->selectedElectionCampus = null;
+            $this->hasStudentCouncilPositions = false;
+            $this->hasLocalCouncilPositions = false;
+            return;
+        }
 
-        $this->latestElection = Election::with('election_type')->find($this->selectedElection);
-
-        $this->selectedElectionName = $this->latestElection ? $this->latestElection->name : null;
-        $this->selectedElectionCampus = $this->latestElection ? $this->latestElection->campus : null;
-
-        $this->hasStudentCouncilPositions = false;
-        $this->hasLocalCouncilPositions = false;
+        $this->latestElection = Election::with('election_type', 'campus')->find($this->selectedElection);
 
         if ($this->latestElection) {
+            $this->selectedElectionName = $this->latestElection->name;
+            $this->selectedElectionCampus = $this->latestElection->campus->name;
+
             $this->hasStudentCouncilPositions = ElectionPosition::where('election_id', $this->latestElection->id)
                 ->whereHas('position.electionType', function ($q) {
                     $q->where('name', 'Student Council Election');
@@ -301,12 +283,6 @@ class ElectionResult extends Component
 
             $this->fetchVoterTally($this->latestElection->id);
         }
-
-        $this->elections = Election::with('election_type')
-            ->whereHas('election_type', function ($q) use ($filter) {
-                $q->where('name', $filter);
-            })
-            ->get();
     }
 
     public function fetchWinners(): void
@@ -335,7 +311,7 @@ class ElectionResult extends Component
 
         // Fetch positions for the election type
         $positions = ElectionPosition::where('election_id', $this->latestElection->id)
-            ->whereHas('position.electionType', function ($q) use ($electionType) {
+            ->whereHas('position.electionType', function ($q) {
                 $q->where('name', $electionType);
             })
             ->with('position')
@@ -573,8 +549,7 @@ class ElectionResult extends Component
 
     public function exportElectionResult()
     {
-        return Excel::download(new ElectionResultExport($this->search, $this->filter, $this->selectedElection), 'ELECTION_RESULT_' . strtoupper($this->latestElection->name) .'.xlsx');
-
+        return Excel::download(new ElectionResultExport($this->search, null, $this->selectedElection), 'ELECTION_RESULT_' . strtoupper($this->latestElection->name) .'.xlsx');
     }
 
     public function render()
@@ -582,7 +557,6 @@ class ElectionResult extends Component
         $voteTally = $this->getVoteTally();
         return view('evotar.livewire.election-result.election-result', [
             'candidates' => $this->candidates,
-            'elections' => $this->elections,
             'selectedElectionName' => $this->selectedElectionName,
             'selectedElectionCampus' => $this->selectedElectionCampus,
             'totalVoters' => $this->totalVoters,

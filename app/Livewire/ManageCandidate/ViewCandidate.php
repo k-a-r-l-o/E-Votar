@@ -14,13 +14,15 @@ use PhpOffice\PhpSpreadsheet\Calculation\Logical\Boolean;
 
 class ViewCandidate extends Component
 {
-    protected $listeners = ['candidate-created' => '$refresh', 'candidate-edited' => '$refresh', 'candidate-deleted' => '$refresh'];
+    protected $listeners = [
+        'candidate-created' => '$refresh', 
+        'candidate-edited' => '$refresh', 
+        'candidate-deleted' => '$refresh',
+        'global-election-updated' => 'handleGlobalElectionUpdate'
+    ];
     public $candidates = [];
-    public $filter;
     public $search = '';
     public $selectedElection;
-    public $selectedFilter = 'tsc';
-    public $elections;
     public $latestElection;
     public $hasStudentCouncilPositions;
     public $hasLocalCouncilPositions;
@@ -36,39 +38,17 @@ class ViewCandidate extends Component
 
     public function mount(): void
     {
-        $selectedElectionId = session('selectedElection');
-
-        if ($selectedElectionId) {
-            $election = Election::with('election_type')->find($selectedElectionId);
-
-            if ($election) {
-                $this->selectedElection = $election->id;
-                $this->selectedElectionName = $election->name;
-                $this->selectedElectionCampus = $election->campus;
-                // If the election's type doesn't match a specific tab, default to the combined tab
-                if (in_array($election->election_type->name, ['Student Council Election', 'Local Council Election', 'Student and Local Council Election'])) {
-                    $this->filter = 'Student and Local Council Election';
-                } else {
-                    $this->filter = $election->election_type->name;
-                }
-            } else {
-                // If the election is not found, set default values
-                $this->filter = null;
-                $this->selectedElection = null;
-            }
-        } else {
-            // No election in session, set default values
-            $this->filter = null;
-            $this->selectedElection = null;
+        $this->selectedElection = session('selectedElection');
+        if ($this->selectedElection) {
+            $this->handleGlobalElectionUpdate($this->selectedElection);
         }
-
-        // Fetch data only if an election exists
-        if ($this->filter) {
-            $this->fetchElection($this->filter);
-        }
-
-        $this->selectedFilter = $this->filter;
         $this->councils = Council::all();
+    }
+
+    public function handleGlobalElectionUpdate($electionId): void
+    {
+        $this->selectedElection = $electionId;
+        $this->fetchElection();
         $this->fetchCandidates();
         $this->fetchVoterTally();
     }
@@ -76,9 +56,7 @@ class ViewCandidate extends Component
 
     public function updatedSearch(): void
     {
-        $this->fetchElection($this->filter);
         $this->fetchCandidates();
-        $this->fetchVoterTally();
     }
 
     public function updatedSelectedElection(): void
@@ -92,7 +70,7 @@ class ViewCandidate extends Component
             session(['selectedElection' => $this->selectedElection]);
 
             // Update flags and candidates
-            $this->fetchElection($this->filter);
+            $this->fetchElection();
             $this->fetchCandidates();
             $this->fetchVoterTally();
         }
@@ -100,17 +78,7 @@ class ViewCandidate extends Component
 
     public function exportCandidate()
     {
-        return Excel::download(new CandidateExport($this->search, $this->filter, $this->selectedElection), 'LIST_OF_CANDIDATES.xlsx');
-
-    }
-
-
-    public function updatedFilter($value): void
-    {
-        $this->selectedElection = null;
-        $this->fetchElection($value);
-        $this->fetchCandidates();
-        $this->fetchVoterTally();
+        return Excel::download(new CandidateExport($this->search, null, $this->selectedElection), 'LIST_OF_CANDIDATES.xlsx');
     }
 
     public function fetchVoterTally(): void
@@ -164,7 +132,8 @@ class ViewCandidate extends Component
             ->withCount('votes')
             ->join('election_positions', 'candidates.election_position_id', '=', 'election_positions.id')
             ->orderBy('election_positions.position_id', 'asc')
-            ->select('candidates.*'); // Ensure only candidate columns are selected
+            ->select('candidates.*')
+            ->where('candidates.election_id', $this->selectedElection);
 
         if ($this->search) {
             $matchingUserIds = User::searchEncrypted($this->search, ['first_name', 'last_name'])
@@ -172,47 +141,29 @@ class ViewCandidate extends Component
             $query->whereIn('user_id', $matchingUserIds);
         }
 
-        if ($this->selectedElection) {
-            $query->whereHas('elections', function ($q) {
-                $q->where('id', $this->selectedElection);
-            });
-        }
-
-        if ($this->filter) {
-            $query->whereHas('elections.election_type', function ($q) {
-                $q->where('name', $this->filter);
-            });
-        }
-
         $this->candidates = $query->get();
 
         $this->hasStudentCouncilCandidate = Candidate::whereHas('election_positions.position.electionType', function ($q) {
             $q->where('name', 'Student Council Election');
-        })->whereHas('elections', function ($q) {
-            $q->where('id', $this->selectedElection);
-        })->exists();
+        })->where('election_id', $this->selectedElection)->exists();
 
         $this->hasLocalCouncilCandidate = Candidate::whereHas('election_positions.position.electionType', function ($q) {
             $q->where('name', 'Local Council Election');
-        })->whereHas('elections', function ($q) {
-            $q->where('id', $this->selectedElection);
-        })->exists();
+        })->where('election_id', $this->selectedElection)->exists();
     }
 
-    public function fetchElection($filter): void
+    public function fetchElection(): void
     {
-        // If we have a selected election, use it as the source of truth for names and flags
-        if ($this->selectedElection) {
-            $this->latestElection = Election::with('election_type', 'campus')->find($this->selectedElection);
-        } else {
-            // Otherwise find the latest based on filter
-            $this->latestElection = Election::with(['election_type', 'campus'])
-                ->whereHas('election_type', function ($q) use ($filter) {
-                    $q->where('name', $filter);
-                })
-                ->orderBy('created_at', 'desc')
-                ->first();
+        if (!$this->selectedElection) {
+            $this->latestElection = null;
+            $this->selectedElectionName = null;
+            $this->selectedElectionCampus = null;
+            $this->hasStudentCouncilPositions = false;
+            $this->hasLocalCouncilPositions = false;
+            return;
         }
+
+        $this->latestElection = Election::with('election_type', 'campus')->find($this->selectedElection);
 
         if ($this->latestElection) {
             $this->selectedElectionName = $this->latestElection->name;
@@ -229,30 +180,13 @@ class ViewCandidate extends Component
                     $q->where('name', 'Local Council Election');
                 })
                 ->exists();
-        } else {
-            // No election found
-            $this->selectedElectionName = null;
-            $this->selectedElectionCampus = null;
-            $this->hasStudentCouncilPositions = false;
-            $this->hasLocalCouncilPositions = false;
         }
-
-        $this->elections = Election::with('election_type')
-            ->whereHas('election_type', function ($q) use ($filter) {
-                $q->where('name', $filter);
-            })
-            ->get();
     }
-
-
 
     public function render(): \Illuminate\Contracts\View\View
     {
-        $this->fetchCandidates();
-
         return view('evotar.livewire.manage-candidate.view-candidate', [
             'candidates' => $this->candidates,
-            'elections' => $this->elections,
             'selectedElectionName' => $this->selectedElectionName,
             'selectedElectionCampus' => $this->selectedElectionCampus,
             'totalVoters' => $this->totalVoters,

@@ -14,13 +14,13 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class RealtimeVoteTally extends Component
 {
-    protected $listeners = ['candidate-created' => '$refresh'];
+    protected $listeners = [
+        'candidate-created' => '$refresh',
+        'global-election-updated' => 'handleGlobalElectionUpdate'
+    ];
     public $candidates = [];
-    public $filter;
     public $search = '';
     public $selectedElection;
-    public $selectedFilter = 'tsc';
-    public $elections;
     public $latestElection;
     public $hasStudentCouncilPositions;
     public $hasLocalCouncilPositions;
@@ -39,39 +39,22 @@ class RealtimeVoteTally extends Component
     {
         $this->selectedElection = session('selectedElection');
         if ($this->selectedElection) {
-            $election = Election::with('election_type')->find($this->selectedElection);
-            if ($election) {
-                if (in_array($election->election_type->name, ['Student Council Election', 'Local Council Election', 'Student and Local Council Election'])) {
-                    $this->filter = 'Student and Local Council Election';
-                } else {
-                    $this->filter = $election->election_type->name;
-                }
-            }
-        } else {
-            $this->filter = 'Student and Local Council Election';
+            $this->handleGlobalElectionUpdate($this->selectedElection);
         }
-
-        $this->fetchElection($this->filter);
-        $this->selectedFilter = $this->filter;
         $this->councils = Council::all();
+    }
+
+    public function handleGlobalElectionUpdate($electionId): void
+    {
+        $this->selectedElection = $electionId;
+        $this->fetchElection();
         $this->fetchCandidates();
         $this->fetchVoterTally();
     }
 
     public function updatedSearch(): void
     {
-        $this->fetchElection($this->filter);
         $this->fetchCandidates();
-        $this->fetchVoterTally();
-    }
-
-    public function updatedFilter($value): void
-    {
-        $this->selectedElection = null;
-        $this->fetchElection($value);
-        $this->fetchCandidates();
-        $this->fetchVoterTally();
-        $this->dispatch('updateChartData', $this->selectedElection);
     }
 
     public function updatedSelectedElection(): void
@@ -83,7 +66,7 @@ class RealtimeVoteTally extends Component
             
             session(['selectedElection' => $this->selectedElection]);
 
-            $this->fetchElection($this->filter);
+            $this->fetchElection();
             $this->fetchCandidates();
             $this->fetchVoterTally();
             $this->dispatch('updateChartData', $this->selectedElection);
@@ -119,32 +102,32 @@ class RealtimeVoteTally extends Component
 
     public function fetchCandidates(): void
     {
+        if (!$this->selectedElection) {
+            $this->candidates = collect();
+            return;
+        }
+
         $query = Candidate::with([
-            'users', // Changed from 'users' (assuming one candidate belongs to one user)
+            'users',
             'users.program.council',
             'elections',
-            'election_positions.position.electionType' // Fixed relationship name
+            'election_positions.position.electionType'
         ])
             ->withCount('votes')
-            ->whereHas('elections', function($q) {
-                $q->where('elections.id', $this->selectedElection);
-            });
+            ->where('election_id', $this->selectedElection);
 
         // Check if the logged-in user has the 'local-council-watcher' role
         $user = auth()->user();
         if ($user && $user->hasRole('local-council-watcher')) {
-            // Filter for Local Council Election candidates
             $query->whereHas('election_positions.position.electionType', function ($q) {
                 $q->where('name', 'Local Council Election');
             });
 
-            // Filter candidates by the same program as the logged-in user
             $query->whereHas('users', function ($q) use ($user) {
                 $q->where('program_id', $user->program_id);
             });
         }
 
-        // Apply search filter
         if ($this->search) {
             $query->whereHas('users', function ($q) {
                 $q->where('first_name', 'like', '%'.$this->search.'%')
@@ -152,49 +135,36 @@ class RealtimeVoteTally extends Component
             });
         }
 
-        // Apply election type filter
-        if ($this->filter) {
-            $query->whereHas('elections.election_type', function ($q) {
-                $q->where('name', $this->filter);
-            });
-        }
-
-        // Get results with proper ordering
         $this->candidates = $query
             ->orderBy('election_position_id')
             ->get();
 
         $this->hasStudentCouncilCandidate = Candidate::whereHas('election_positions.position.electionType', function ($q) {
             $q->where('name', 'Student Council Election');
-        })->whereHas('elections', function ($q) {
-            $q->where('id', $this->selectedElection);
-        })->exists();
+        })->where('election_id', $this->selectedElection)->exists();
 
         $this->hasLocalCouncilCandidate = Candidate::whereHas('election_positions.position.electionType', function ($q) {
             $q->where('name', 'Local Council Election');
-        })->whereHas('elections', function ($q) {
-            $q->where('id', $this->selectedElection);
-        })->exists();
-
+        })->where('election_id', $this->selectedElection)->exists();
     }
 
-    public function fetchElection($filter): void
+    public function fetchElection(): void
     {
-        $this->latestElection = Election::with('election_type')
-            ->whereHas('election_type', function ($q) use ($filter) {
-                $q->where('name', $filter);
-            })
-            ->orderBy('created_at', 'desc')
-            ->first();
+        if (!$this->selectedElection) {
+            $this->latestElection = null;
+            $this->selectedElectionName = null;
+            $this->selectedElectionCampus = null;
+            $this->hasStudentCouncilPositions = false;
+            $this->hasLocalCouncilPositions = false;
+            return;
+        }
 
-        $this->selectedElectionName = $this->latestElection ? $this->latestElection->name : null;
-        $this->selectedElectionCampus = $this->latestElection ? $this->latestElection->campus : null;
-
-
-        $this->hasStudentCouncilPositions = false;
-        $this->hasLocalCouncilPositions = false;
+        $this->latestElection = Election::with('election_type')->find($this->selectedElection);
 
         if ($this->latestElection) {
+            $this->selectedElectionName = $this->latestElection->name;
+            $this->selectedElectionCampus = $this->latestElection->campus;
+
             $this->hasStudentCouncilPositions = ElectionPosition::where('election_id', $this->latestElection->id)
                 ->whereHas('position.electionType', function ($q) {
                     $q->where('name', 'Student Council Election');
@@ -207,26 +177,17 @@ class RealtimeVoteTally extends Component
                 })
                 ->exists();
         }
-
-        $this->elections = Election::with('election_type')
-            ->whereHas('election_type', function ($q) use ($filter) {
-                $q->where('name', $filter);
-            })
-            ->get();
     }
 
     public function exportVoteTally()
     {
-        return Excel::download(new VoteTallyExport($this->search, $this->filter, $this->selectedElection), 'VOTE_TALLY_' .  strtoupper($this->latestElection->name) . '.xlsx');
-
+        return Excel::download(new VoteTallyExport($this->search, null, $this->selectedElection), 'VOTE_TALLY_' .  strtoupper($this->latestElection->name) . '.xlsx');
     }
 
     public function render()
     {
-        $this->fetchCandidates();
         return view('evotar.livewire.vote-tally.realtime-vote-tally', [
             'candidates' => $this->candidates,
-            'elections' => $this->elections,
             'selectedElectionName' => $this->selectedElectionName,
             'selectedElectionCampus' => $this->selectedElectionCampus,
             'totalVoters' => $this->totalVoters,
@@ -234,7 +195,6 @@ class RealtimeVoteTally extends Component
             'councils' => $this->councils,
             'hasStudentCouncilPositions' => $this->hasStudentCouncilPositions,
             'hasLocalCouncilPositions' => $this->hasLocalCouncilPositions,
-
         ]);
     }
 }

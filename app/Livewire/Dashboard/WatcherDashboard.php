@@ -12,9 +12,11 @@ use Livewire\Component;
 
 class WatcherDashboard extends Component
 {
-    protected $listeners = ['candidate-created' => '$refresh'];
+    protected $listeners = [
+        'candidate-created' => '$refresh',
+        'global-election-updated' => 'handleGlobalElectionUpdate'
+    ];
     public $candidates = [];
-    public $filter;
     public $search = '';
     public $selectedElection;
     public $elections;
@@ -35,53 +37,23 @@ class WatcherDashboard extends Component
      * @throws Exception
      */
     public function mount(): void
-{
-    $selectedElectionId = session('selectedElection');
-
-    if ($selectedElectionId) {
-        $election = Election::with('election_type')->find($selectedElectionId);
-
-        if ($election) {
-            $this->filter = $election->election_type->name;
-            $this->selectedElection = $selectedElectionId;
-        } else {
-            // If the election is not found, set default values
-            $this->filter = null;
-            $this->selectedElection = null;
-        }
-    } else {
-        // No election in session, set default values
-        $this->filter = null;
-        $this->selectedElection = null;
-    }
-
-    // Fetch data only if an election exists
-    if ($this->filter) {
-        $this->fetchElection($this->filter);
-    }
-
-    $this->selectedFilter = $this->filter;
-    $this->councils = Council::all();
-    $this->fetchCandidates();
-    $this->fetchVoterTally();
-}
-
-    public function updatedSearch(): void
     {
+        $this->selectedElection = session('selectedElection');
+        if ($this->selectedElection) {
+            $this->handleGlobalElectionUpdate($this->selectedElection);
+        }
+        $this->councils = Council::all();
+    }
+
+    public function handleGlobalElectionUpdate($electionId): void
+    {
+        $this->selectedElection = $electionId;
+        $this->fetchElection();
         $this->fetchCandidates();
         $this->fetchVoterTally();
     }
 
-    /**
-     * @throws Exception
-     */
-    public function updatedFilter(): void
-    {
-        $this->fetchElection($this->filter);
-        $this->fetchCandidates();
-    }
-
-    public function updatedSelectedElection(): void
+    public function updatedSearch(): void
     {
         $this->fetchCandidates();
         $this->fetchVoterTally();
@@ -129,12 +101,6 @@ class WatcherDashboard extends Component
             });
         }
 
-        if ($this->filter) {
-            $query->whereHas('elections.election_type', function ($q) {
-                $q->where('name', $this->filter);
-            });
-        }
-
         $this->candidates = $query->get();
 
         $this->hasStudentCouncilCandidate = Candidate::whereHas('election_positions.position.electionType', function ($q) {
@@ -150,17 +116,18 @@ class WatcherDashboard extends Component
         })->exists();
     }
 
-    /**
-     * @throws Exception
-     */
-    public function fetchElection($filter): void
+    public function fetchElection(): void
     {
-        $this->latestElection = Election::with('election_type')
-            ->whereHas('election_type', function ($q) use ($filter) {
-                $q->where('name', $filter);
-            })
-            ->orderBy('created_at', 'desc')
-            ->first();
+        if (!$this->selectedElection) {
+            $this->latestElection = null;
+            $this->selectedElectionName = null;
+            $this->selectedElectionCampus = null;
+            $this->hasStudentCouncilPositions = false;
+            $this->hasLocalCouncilPositions = false;
+            return;
+        }
+
+        $this->latestElection = Election::with('election_type')->find($this->selectedElection);
 
         if ($this->latestElection) {
             $this->selectedElectionName = $this->latestElection->name;
@@ -177,19 +144,7 @@ class WatcherDashboard extends Component
                     $q->where('name', 'Local Council Election');
                 })
                 ->exists();
-        } else {
-            // No election found
-            $this->selectedElectionName = null;
-            $this->selectedElectionCampus = null;
-            $this->hasStudentCouncilPositions = false;
-            $this->hasLocalCouncilPositions = false;
         }
-
-        $this->elections = Election::with('election_type')
-            ->whereHas('election_type', function ($q) use ($filter) {
-                $q->where('name', $filter);
-            })
-            ->get();
     }
 
     public function fetchPositions(): void

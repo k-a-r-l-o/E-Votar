@@ -11,9 +11,12 @@ use Livewire\Component;
 
 class AdminDashboard extends Component
 {
-    protected $listeners = ['candidate-created' => '$refresh', 'echo:election-status,ElectionStatus' => '$refresh'];
+    protected $listeners = [
+        'candidate-created' => '$refresh',
+        'echo:election-status,ElectionStatus' => '$refresh',
+        'global-election-updated' => 'handleGlobalElectionUpdate'
+    ];
     public $candidates = [];
-    public $filter = 'Student and Local Council Election';
     public $search = '';
     public $selectedElection;
     public $elections;
@@ -30,30 +33,21 @@ class AdminDashboard extends Component
      */
     public function mount(): void
     {
+        $this->selectedElection = session('selectedElection');
+        if ($this->selectedElection) {
+            $this->handleGlobalElectionUpdate($this->selectedElection);
+        }
+    }
 
+    public function handleGlobalElectionUpdate($electionId): void
+    {
+        $this->selectedElection = $electionId;
         $this->fetchElection();
         $this->fetchCandidates();
         $this->fetchVoterTally();
-
-
     }
 
     public function updatedSearch(): void
-    {
-        $this->fetchCandidates();
-        $this->fetchVoterTally();
-    }
-
-    /**
-     * @throws Exception
-     */
-    public function updatedFilter(): void
-    {
-        $this->fetchElection();
-        $this->fetchCandidates();
-    }
-
-    public function updatedSelectedElection(): void
     {
         $this->fetchCandidates();
         $this->fetchVoterTally();
@@ -118,48 +112,17 @@ class AdminDashboard extends Component
 
     }
 
-    /**
-     * @throws Exception
-     */
     public function fetchElection(): void
     {
-//        $this->latestElection = Election::with('election_type')
-//            ->orderBy('created_at', 'desc')
-//            ->first();
-
-        $selectedElectionId = session('selectedElection');
-
-// Check if the elections table is empty
-        if (!Election::exists()) {
-            session()->forget('selectedElection'); // Clear any existing session value
+        if (!$this->selectedElection) {
             $this->latestElection = null;
-            $this->selectedElection = null;
-            return; // Stop execution to prevent errors
+            $this->hasStudentCouncilPositions = false;
+            $this->hasLocalCouncilPositions = false;
+            $this->positions = collect();
+            return;
         }
 
-// If session value is missing, set to the latest election
-        if (!$selectedElectionId) {
-            $latestElection = Election::latest('created_at')->first();
-
-            if (!$latestElection) {
-                $this->latestElection = null;
-                $this->selectedElection = null;
-                return; // Stop execution to prevent errors
-            }
-
-            $selectedElectionId = $latestElection->id;
-            session(['selectedElection' => $selectedElectionId]);
-        }
-
-// Now safely retrieve the selected election
-        $this->latestElection = Election::with('election_type')->find($selectedElectionId);
-        $this->selectedElection = $this->latestElection ? $this->latestElection->id : null;
-
-
-//        $this->selectedElection = $this->latestElection ? $this->latestElection->id : null;
-
-        $this->hasStudentCouncilPositions = false;
-        $this->hasLocalCouncilPositions = false;
+        $this->latestElection = Election::with('election_type')->find($this->selectedElection);
 
         if ($this->latestElection) {
             $this->hasStudentCouncilPositions = ElectionPosition::where('election_id', $this->latestElection->id)
@@ -175,10 +138,7 @@ class AdminDashboard extends Component
                 ->exists();
         }
 
-        $this->elections = Election::with('election_type')
-            ->get();
         $this->fetchPositions();
-
     }
 
     public function fetchPositions(): void
@@ -199,18 +159,12 @@ class AdminDashboard extends Component
         $election = Election::find($this->selectedElection);
         if ($election) {
             $this->totalVoters = User::where('campus_id', $election->campus_id)
-//                ->whereHas('roles', function ($query) {
-//                    $query->where('name', 'voter');
-//                })
                 ->whereDoesntHave('electionExcludedVoters', function ($query) use ($election) {
                     $query->where('election_id', $election->id);
                 })
                 ->count();
 
             $this->totalVoterVoted = User::where('campus_id', $election->campus_id)
-//                ->whereHas('roles', function ($query) {
-//                    $query->where('name', 'voter');
-//                })
                 ->whereDoesntHave('electionExcludedVoters', function ($query) use ($election) {
                     $query->where('election_id', $election->id);
                 })
@@ -224,17 +178,15 @@ class AdminDashboard extends Component
                 })
                 ->count();
 
-
-
             $this->totalCandidates = Candidate::where('election_id', $election->id)->count();
             $this->totalPositions = ElectionPosition::where('election_id', $election->id)->count();
         }
     }
+
     public function render()
     {
         return view('evotar.livewire.dashboard.admin-dashboard', [
             'candidates' => $this->candidates,
-            'elections' => $this->elections,
             'totalVoters' => $this->totalVoters,
             'totalVoterVoted' => $this->totalVoterVoted,
             'totalCandidates' => $this->totalCandidates,

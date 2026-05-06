@@ -5,9 +5,6 @@
                 <h1 class="text-base font-semibold leading-6 text-gray-900">Dashboard</h1>
                 <p class=" text-gray-500 text-[11px]">Hi, {{ auth()->user()->first_name }} . Welcome back!</p>
             </div>
-            <div class="w-full lg:w-1/2">
-                <livewire:election-select/>
-            </div>
         </div>
 
 

@@ -1,49 +1,6 @@
 <div class="flex flex-col items-start space-y-4 w-full px-0">
-    <div class="hidden sm:block mb-2">
-        <div class="border-b border-gray-200">
-            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                <button wire:click="$set('filter', 'Student and Local Council Election')"
-                        class=" whitespace-nowrap border-b-2 pb-1 px-1 text-[10px] font-medium {{ $filter === 'Student and Local Council Election' ? 'border-black text-black' : 'text-gray-500 hover:text-black' }}">
-                    Student and Local Council Election
-                </button>
-                <button wire:click="$set('filter', 'Student Council Election')"
-                        class="whitespace-nowrap border-b-2 pb-1 px-1 text-[10px] font-medium {{ $filter === 'Student Council Election' ? 'border-black text-black' : 'text-gray-500 hover:text-black' }}">
-                    Student Council Election
-                </button>
-                <button wire:click="$set('filter', 'Local Council Election')"
-                        class="whitespace-nowrap border-b-2 pb-1 px-1 text-[10px] font-medium {{ $filter === 'Local Council Election' ? 'border-black text-black' : 'text-gray-500 hover:text-black' }}">
-                    Local Council Election
-                </button>
-                <button wire:click="$set('filter', 'Special Election')"
-                        class="whitespace-nowrap border-b-2 pb-1 px-1 text-[10px] font-medium {{ $filter === 'Special Election' ? 'border-black text-black' : 'text-gray-500 hover:text-black' }}">
-                    Special Election
-                </button>
-            </nav>
-        </div>
-    </div>
-    <div class="w-full">
-        <div class="flex-1 mb-3">
-            <label for="candidate_election" class="text-xs font-semibold block mb-1">Select Election</label>
-            <select name="selectedElection" id="candidate_election"
-                    class="border-gray-300 text-xs rounded-lg px-4 py-2 w-full "
-                    wire:model.live="selectedElection">
-                <option value="" disabled>Select an election</option>
-                @if($selectedElection)
-                    @foreach($elections as $election)
-                        <option
-                            value="{{ $election->id }}" {{ $election->id == $selectedElection ? 'selected' : '' }}>
-                            {{ $election->name }} - {{ $election->campus->name }}
-                            - {{$election->election_type->name }}
-                        </option>
-                    @endforeach
-                @else
-                    <option value="" selected>No Election Created Yet</option>
-                @endif
-            </select>
-            @error('selectedElection')
-            <span class="text-red-500 text-[10px] italic">{{ $message }}</span>
-            @enderror
-        </div>
+    <div class="flex items-center justify-between w-full mb-3">
+        <h1 class="text-lg font-bold text-gray-800">Election Results</h1>
     </div>
 
     <div class="bg-white p-6 text-[11px] md:text-[12px] mt-4 shadow-md rounded w-full">
