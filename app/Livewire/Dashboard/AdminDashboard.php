@@ -185,6 +185,12 @@ class AdminDashboard extends Component
 
     public function render()
     {
+        if ($this->selectedElection) {
+            $this->fetchElection();
+            $this->fetchCandidates();
+            $this->fetchVoterTally();
+        }
+
         return view('evotar.livewire.dashboard.admin-dashboard', [
             'candidates' => $this->candidates,
             'totalVoters' => $this->totalVoters,

@@ -546,7 +546,7 @@
                                                         </div>
                                                         <div class="mt-2 space-y-2">
                                                             @php
-                                                                $abstainCount = \App\Models\AbstainVote::where('election_id', $election->id)
+                                                                $abstainCount = \App\Models\AbstainVote::where('election_id', $selectedElection)
                                                                     ->whereHas('position', function ($query) use ($position) {
                                                                         $query->where('name', $position);
                                                                     })
@@ -599,7 +599,7 @@
                                                                     </div>
                                                                     <div class="mt-2 space-y-2">
                                                                         @php
-                                                                            $abstainCount = \App\Models\AbstainVote::where('election_id', $election->id)
+                                                                            $abstainCount = \App\Models\AbstainVote::where('election_id', $selectedElection)
                                                                                 ->whereHas('position', function ($query) use ($position) {
                                                                                     $query->where('name', $position);
                                                                                 })

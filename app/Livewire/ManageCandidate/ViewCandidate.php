@@ -185,6 +185,12 @@ class ViewCandidate extends Component
 
     public function render(): \Illuminate\Contracts\View\View
     {
+        if ($this->selectedElection) {
+            $this->fetchElection();
+            $this->fetchCandidates();
+            $this->fetchVoterTally();
+        }
+
         return view('evotar.livewire.manage-candidate.view-candidate', [
             'candidates' => $this->candidates,
             'selectedElectionName' => $this->selectedElectionName,

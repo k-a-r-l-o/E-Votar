@@ -183,6 +183,12 @@ class RealtimeVoteTally extends Component
 
     public function render()
     {
+        if ($this->selectedElection) {
+            $this->fetchElection();
+            $this->fetchCandidates();
+            $this->fetchVoterTally();
+        }
+
         return view('evotar.livewire.vote-tally.realtime-vote-tally', [
             'candidates' => $this->candidates,
             'selectedElectionName' => $this->selectedElectionName,

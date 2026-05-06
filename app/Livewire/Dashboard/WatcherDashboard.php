@@ -193,6 +193,12 @@ class WatcherDashboard extends Component
     }
     public function render()
     {
+        if ($this->selectedElection) {
+            $this->fetchElection();
+            $this->fetchCandidates();
+            $this->fetchVoterTally();
+        }
+
         return view('evotar.livewire.dashboard.watcher-dashboard', [
             'candidates' => $this->candidates,
             'elections' => $this->elections,

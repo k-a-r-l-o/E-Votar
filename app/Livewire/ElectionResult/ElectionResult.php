@@ -311,7 +311,7 @@ class ElectionResult extends Component
 
         // Fetch positions for the election type
         $positions = ElectionPosition::where('election_id', $this->latestElection->id)
-            ->whereHas('position.electionType', function ($q) {
+            ->whereHas('position.electionType', function ($q) use ($electionType) {
                 $q->where('name', $electionType);
             })
             ->with('position')
@@ -554,6 +554,12 @@ class ElectionResult extends Component
 
     public function render()
     {
+        if ($this->selectedElection) {
+            $this->fetchElection();
+            $this->fetchCandidates();
+            $this->fetchWinners();
+        }
+
         $voteTally = $this->getVoteTally();
         return view('evotar.livewire.election-result.election-result', [
             'candidates' => $this->candidates,
