@@ -1,5 +1,18 @@
 <div>
-    <div x-data="accountSettings()" class="min-h-screen p-2 sm:p-3 md:p-6">
+    <div x-data="{ 
+            activeTab: 'profile', 
+            tabs: {{ json_encode($tabs) }},
+            confirmPassword: '',
+            passwordsMatch: false,
+            getIcon(name) {
+                const icons = {
+                    profile: `<svg class='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'/></svg>`,
+                    security: `<svg class='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'/></svg>`,
+                    developer: `<svg class='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4'/></svg>`
+                };
+                return icons[name] || '';
+            }
+        }" class="min-h-screen p-2 sm:p-3 md:p-6">
         <div class="container-custom mx-auto">
             <!-- Header with Back Button -->
             <div class="mx-auto flex w-full">
@@ -9,7 +22,7 @@
                     <div class="flex flex-row justify-between items-start mb-4">
                         <div class="text-left">
                             <h1 class="text-base font-semibold leading-6 text-gray-900">Account Settings</h1>
-                            <p class="text-[11px] text-gray-500"></p>
+                            <p class="text-[11px] text-gray-500">Manage your personal information, security, and system preferences</p>
                         </div>
                     </div>
                 </div>
@@ -29,8 +42,8 @@
                                     'text-gray-500 border-transparent hover:bg-[#f7f9fc]/50': activeTab !== tab.id
                                 }"
                             >
-                                <span x-html="tab.icon" class="w-5 h-5 mb-1"></span>
-                                <span class="text-xs" x-text="tab.label"></span>
+                                <span x-html="getIcon(tab.icon)" class="mb-1"></span>
+                                <span class="text-[10px] font-semibold uppercase tracking-wider" x-text="tab.label"></span>
                             </button>
                         </template>
                     </div>
@@ -42,12 +55,9 @@
 
                 <!-- Content Area -->
                 <div class="flex-1">
-                    <div x-data="{ activeTab: 'profile', notification: '' }" x-init="
-                            $watch('notification', value => { if (value) setTimeout(() => notification = '', 3000); });
-                            $wire.on('notify', ({ message }) => notification = message);
-                        ">
-                        <!-- Tab Navigation -->
-                        <div class="flex space-x-2 mb-6 border-b border-gray-200">
+                    <div>
+                        <!-- Tab Navigation (Desktop Only) -->
+                        <div class="hidden lg:flex space-x-2 mb-6 border-b border-gray-200">
                             @foreach ($tabs as $tab)
                                 <button
                                     @click="activeTab = '{{ $tab['id'] }}'"
@@ -59,11 +69,7 @@
                             @endforeach
                         </div>
 
-                        <!-- Notification -->
-                        <div x-show="notification" x-transition
-                             class="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
-                            <span x-text="notification"></span>
-                        </div>
+
 
                         <!-- Profile Tab -->
                         <div x-show="activeTab === 'profile'"

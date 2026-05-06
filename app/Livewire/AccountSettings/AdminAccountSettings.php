@@ -109,7 +109,7 @@ class AdminAccountSettings extends Component
             'profile_photo_path' => $path ?? $user->profile_photo_path,
         ]);
 
-        $this->dispatch('notify', ['message' => 'Profile updated successfully!']);
+        $this->js("pushNotification('success', 'Profile Updated', 'Your profile has been updated successfully.')");
     }
 
     public function updatePassword()
@@ -144,7 +144,7 @@ class AdminAccountSettings extends Component
         $this->passwordStrength = 0;
         $this->passwordRequirements = array_fill_keys(array_keys($this->passwordRequirements), false);
 
-        $this->dispatch('notify', ['message' => 'Password updated successfully!']);
+        $this->js("pushNotification('success', 'Password Updated', 'Your password has been changed successfully.')");
     }
 
     public function updatedNewPassword($value)

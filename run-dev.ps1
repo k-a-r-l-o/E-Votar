@@ -7,5 +7,5 @@ if (-not (Test-Path .env)) {
 Write-Host "Starting E-Votar Development Environment..." -ForegroundColor Green
 Write-Host "Access locally at: http://localhost:8000" -ForegroundColor Yellow
 
-# Use npx to run concurrently, executing both PHP server and Vite
-npx concurrently "php artisan serve" "npm run dev"
+# Use npx to run concurrently, executing PHP server, Vite, and the Scheduler
+npx concurrently "php artisan serve" "npm run dev" "php artisan schedule:work"
