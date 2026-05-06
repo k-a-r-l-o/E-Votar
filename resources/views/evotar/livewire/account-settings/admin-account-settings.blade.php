@@ -78,24 +78,36 @@
 
                             <!-- Profile Picture -->
                             <div class="flex flex-col items-center -mt-12 mb-6">
-                                <div class="relative h-24 w-24 rounded-full border-4 border-white shadow-sm bg-gray-100 overflow-hidden">
-                                    @if ($profileImage && $profileImage->temporaryUrl())
-                                        <img src="{{ $profileImage->temporaryUrl() }}" alt="Profile picture preview" class="w-full h-full object-cover" />
-                                    @elseif ($temporaryProfileImageUrl)
-                                        <img src="{{ $temporaryProfileImageUrl }}" alt="Profile picture" class="w-full h-full object-cover" />
-                                    @else
-                                        <div class="w-full h-full flex items-center justify-center bg-gray-200">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                            </svg>
-                                        </div>
-                                    @endif
+                                <div x-data="{ previewUrl: null }" class="relative h-24 w-24 rounded-full border-4 border-white shadow-sm bg-gray-100 overflow-hidden">
+                                    <template x-if="previewUrl">
+                                        <img :src="previewUrl" alt="Profile picture preview" class="w-full h-full object-cover" />
+                                    </template>
+                                    <template x-if="!previewUrl">
+                                        @if ($temporaryProfileImageUrl)
+                                            <img src="{{ $temporaryProfileImageUrl }}" alt="Profile picture" class="w-full h-full object-cover" />
+                                        @else
+                                            <div class="w-full h-full flex items-center justify-center bg-gray-200">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                </svg>
+                                            </div>
+                                        @endif
+                                    </template>
                                     <label for="profile-upload" class="absolute bottom-0 right-0 h-8 w-8 bg-indigo-600 rounded-full flex items-center justify-center cursor-pointer border-2 border-white hover:bg-indigo-700 transition">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                                             <circle cx="12" cy="13" r="4" />
                                         </svg>
-                                        <input id="profile-upload" wire:model="profileImage" type="file" accept="image/*" class="hidden" />
+                                        <input id="profile-upload" wire:model="profileImage" type="file" accept="image/*" class="hidden"
+                                            x-on:change="
+                                                const file = $event.target.files[0];
+                                                if (file) {
+                                                    const reader = new FileReader();
+                                                    reader.onload = (e) => { previewUrl = e.target.result; };
+                                                    reader.readAsDataURL(file);
+                                                }
+                                            "
+                                        />
                                     </label>
                                 </div>
                             </div>
