@@ -267,7 +267,7 @@ class ElectionResult extends Component
 
         if ($this->latestElection) {
             $this->selectedElectionName = $this->latestElection->name;
-            $this->selectedElectionCampus = $this->latestElection->campus->name;
+            $this->selectedElectionCampus = $this->latestElection->campus;
 
             $this->hasStudentCouncilPositions = ElectionPosition::where('election_id', $this->latestElection->id)
                 ->whereHas('position.electionType', function ($q) {

@@ -7,22 +7,23 @@
             <p class="text-[10px]">University of Southeastern Philippines</p>
             <p class="text-[12px] font-semibold text-red-900">USeP COMMISSION ON ELECTIONS</p>
             <p class="text-[10px]">Impartiality, Transparency, Integrity</p>
+
+            <!-- Global Election Selector -->
+            <div class="mt-2 hidden lg:flex items-center space-x-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 shadow-sm">
+                <label for="globalElection" class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Active Election</label>
+                <select id="globalElection"
+                        wire:model.live="selectedElection"
+                        class="bg-transparent border-none text-[12px] font-semibold text-gray-700 focus:ring-0 cursor-pointer min-w-[200px]">
+                    @foreach($elections as $election)
+                        <option value="{{ $election->id }}">
+                            {{ $election->name }} - {{ $election->election_type->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
         </div>
     </div>
     <div class="flex items-center space-x-4">
-        <!-- Global Election Selector -->
-        <div class="hidden lg:flex items-center space-x-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 shadow-sm">
-            <label for="globalElection" class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Active Election</label>
-            <select id="globalElection" 
-                    wire:model.live="selectedElection"
-                    class="bg-transparent border-none text-[12px] font-semibold text-gray-700 focus:ring-0 cursor-pointer min-w-[200px]">
-                @foreach($elections as $election)
-                    <option value="{{ $election->id }}">
-                        {{ $election->name }} - {{ $election->election_type->name }}
-                    </option>
-                @endforeach
-            </select>
-        </div>
 
         <img class="w-8 h-8 rounded-full hidden md:block" height="32" src="{{ asset('storage/assets/logo/usep_logo.jpg') }}" alt="usep_logo" width="32"/>
         <img class="w-8 h-8 rounded-full hidden md:block" height="32" src="{{ asset('storage/assets/logo/usg_logo.png') }}" alt="usg_logo" width="32"/>

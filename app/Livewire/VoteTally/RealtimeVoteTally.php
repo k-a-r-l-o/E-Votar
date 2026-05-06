@@ -77,10 +77,7 @@ class RealtimeVoteTally extends Component
     {
         $election = Election::find($this->selectedElection);
         if ($election) {
-            $this->totalVoters = User::where('campus_id', $election->campus_id)->where('program_id')
-//                ->whereHas('roles', function ($query) {
-//                    $query->where('name', 'voter');
-//                })
+            $this->totalVoters = User::where('campus_id', $election->campus_id)
                 ->whereDoesntHave('electionExcludedVoters', function ($query) use ($election) {
                     $query->where('election_id', $election->id);
                 })
