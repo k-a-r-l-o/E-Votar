@@ -46,7 +46,7 @@
 
             <div>
 
-                @if($selectedElection)
+                @if($selectedElection && $latestElection)
                     @if($latestElection->status == 'completed')
                         <div class="w-full mt-8 md:mt-0 mb-8" wire:key="voter-tally-{{ $selectedElection }}">
                             <div

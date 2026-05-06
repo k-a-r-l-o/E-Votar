@@ -215,7 +215,7 @@
 
         <div>
             <div class="w-full bg-white rounded-lg shadow-md">
-                @if($selectedElection)
+                @if($selectedElection && $latestElection)
                     @if(auth()->user()->hasRole('student-council-watcher'))
                         <div class="w-full flex flex-col p-6 justify-center items-center">
                             <div>

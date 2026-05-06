@@ -184,7 +184,7 @@
 
         <div>
             <div class="w-full bg-white rounded-lg p-6">
-                @if($selectedElection)
+                @if($selectedElection && $latestElection)
                     <div class="w-full flex flex-col justify-center items-center">
                         <div class="mb-6 text-center">
                             <h1 class="text-[16px] font-bold text-gray-900">Election Information</h1>

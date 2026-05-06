@@ -69,7 +69,7 @@ class ElectionResult extends Component
         $election = Election::with('campus')->find($this->selectedElection);
         if ($election) {
             $this->selectedElectionName = $election->name;
-            $this->selectedElectionCampus = $election->campus->name;
+            $this->selectedElectionCampus = $election->campus;
 
             session(['selectedElection' => $this->selectedElection]);
 
