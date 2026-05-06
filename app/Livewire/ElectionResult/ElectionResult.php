@@ -41,17 +41,24 @@ class ElectionResult extends Component
     public function mount(): void
     {
         $this->selectedElection = session('selectedElection');
-        if ($this->selectedElection){
-            $this->filter = Election::with('election_type')
-                ->find(($this->selectedElection))
-                ->election_type
-                ->name;
-            $this->fetchElection($this->filter);
-            $this->councils = Council::all();
-            $this->selectedFilter = $this->filter;
-            $this->fetchCandidates();
-            $this->fetchWinners();
+        if ($this->selectedElection) {
+            $election = Election::with('election_type')->find($this->selectedElection);
+            if ($election) {
+                if (in_array($election->election_type->name, ['Student Council Election', 'Local Council Election', 'Student and Local Council Election'])) {
+                    $this->filter = 'Student and Local Council Election';
+                } else {
+                    $this->filter = $election->election_type->name;
+                }
+            }
+        } else {
+            $this->filter = 'Student and Local Council Election';
         }
+
+        $this->fetchElection($this->filter);
+        $this->councils = Council::all();
+        $this->selectedFilter = $this->filter;
+        $this->fetchCandidates();
+        $this->fetchWinners();
     }
 
     public function updatedSearch(): void
@@ -61,9 +68,10 @@ class ElectionResult extends Component
         $this->fetchWinners();
     }
 
-    public function updatedFilter(): void
+    public function updatedFilter($value): void
     {
-        $this->fetchElection($this->filter);
+        $this->selectedElection = null;
+        $this->fetchElection($value);
         $this->fetchCandidates();
         $this->fetchWinners();
         $this->dispatch('updateChartData', $this->selectedElection);
@@ -71,15 +79,19 @@ class ElectionResult extends Component
 
     public function updatedSelectedElection(): void
     {
-        $election = Election::find($this->selectedElection);
-        $this->selectedElectionName = $election?->name;
-        $this->selectedElectionCampus = $election?->campus->name;
+        $election = Election::with('campus')->find($this->selectedElection);
+        if ($election) {
+            $this->selectedElectionName = $election->name;
+            $this->selectedElectionCampus = $election->campus->name;
 
-        $this->fetchElection($this->filter);
-        $this->fetchCandidates();
-        $this->fetchWinners();
-        $this->fetchVoterTally($election->id);
-        $this->dispatch('updateChartData', $this->selectedElection);
+            session(['selectedElection' => $this->selectedElection]);
+
+            $this->fetchElection($this->filter);
+            $this->fetchCandidates();
+            $this->fetchWinners();
+            $this->fetchVoterTally($election->id);
+            $this->dispatch('updateChartData', $this->selectedElection);
+        }
     }
 
 

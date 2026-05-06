@@ -39,16 +39,23 @@ class RealtimeVoteTally extends Component
     {
         $this->selectedElection = session('selectedElection');
         if ($this->selectedElection) {
-            $this->filter = Election::with('election_type')
-                ->find(session('selectedElection'))
-                ->election_type
-                ->name;
-            $this->fetchElection($this->filter);
-            $this->selectedFilter = $this->filter;
-            $this->councils = Council::all();
-            $this->fetchCandidates();
-            $this->fetchVoterTally();
+            $election = Election::with('election_type')->find($this->selectedElection);
+            if ($election) {
+                if (in_array($election->election_type->name, ['Student Council Election', 'Local Council Election', 'Student and Local Council Election'])) {
+                    $this->filter = 'Student and Local Council Election';
+                } else {
+                    $this->filter = $election->election_type->name;
+                }
+            }
+        } else {
+            $this->filter = 'Student and Local Council Election';
         }
+
+        $this->fetchElection($this->filter);
+        $this->selectedFilter = $this->filter;
+        $this->councils = Council::all();
+        $this->fetchCandidates();
+        $this->fetchVoterTally();
     }
 
     public function updatedSearch(): void
@@ -58,9 +65,10 @@ class RealtimeVoteTally extends Component
         $this->fetchVoterTally();
     }
 
-    public function updatedFilter(): void
+    public function updatedFilter($value): void
     {
-        $this->fetchElection($this->filter);
+        $this->selectedElection = null;
+        $this->fetchElection($value);
         $this->fetchCandidates();
         $this->fetchVoterTally();
         $this->dispatch('updateChartData', $this->selectedElection);
@@ -69,13 +77,17 @@ class RealtimeVoteTally extends Component
     public function updatedSelectedElection(): void
     {
         $election = Election::find($this->selectedElection);
-        $this->selectedElectionName = $election?->name;
-        $this->selectedElectionCampus = $election?->campus;
+        if ($election) {
+            $this->selectedElectionName = $election->name;
+            $this->selectedElectionCampus = $election->campus;
+            
+            session(['selectedElection' => $this->selectedElection]);
 
-        $this->fetchElection($this->filter);
-        $this->fetchCandidates();
-        $this->fetchVoterTally();
-        $this->dispatch('updateChartData', $this->selectedElection);
+            $this->fetchElection($this->filter);
+            $this->fetchCandidates();
+            $this->fetchVoterTally();
+            $this->dispatch('updateChartData', $this->selectedElection);
+        }
     }
 
     public function fetchVoterTally(): void

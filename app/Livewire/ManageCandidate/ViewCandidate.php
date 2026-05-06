@@ -46,7 +46,7 @@ class ViewCandidate extends Component
                 $this->selectedElectionName = $election->name;
                 $this->selectedElectionCampus = $election->campus;
                 // If the election's type doesn't match a specific tab, default to the combined tab
-                if (in_array($election->election_type->name, ['Student Council Election', 'Local Council Election'])) {
+                if (in_array($election->election_type->name, ['Student Council Election', 'Local Council Election', 'Student and Local Council Election'])) {
                     $this->filter = 'Student and Local Council Election';
                 } else {
                     $this->filter = $election->election_type->name;
@@ -81,13 +81,6 @@ class ViewCandidate extends Component
         $this->fetchVoterTally();
     }
 
-    public function updatedFilter(): void
-    {
-        $this->fetchElection($this->filter);
-        $this->fetchCandidates();
-        $this->fetchVoterTally();
-    }
-
     public function updatedSelectedElection(): void
     {
         $election = Election::find($this->selectedElection);
@@ -111,6 +104,14 @@ class ViewCandidate extends Component
 
     }
 
+
+    public function updatedFilter($value): void
+    {
+        $this->selectedElection = null;
+        $this->fetchElection($value);
+        $this->fetchCandidates();
+        $this->fetchVoterTally();
+    }
 
     public function fetchVoterTally(): void
     {
@@ -179,11 +180,7 @@ class ViewCandidate extends Component
 
         if ($this->filter) {
             $query->whereHas('elections.election_type', function ($q) {
-                if ($this->filter === 'Student and Local Council Election') {
-                    $q->whereIn('name', ['Student Council Election', 'Local Council Election']);
-                } else {
-                    $q->where('name', $this->filter);
-                }
+                $q->where('name', $this->filter);
             });
         }
 
@@ -211,11 +208,7 @@ class ViewCandidate extends Component
             // Otherwise find the latest based on filter
             $this->latestElection = Election::with(['election_type', 'campus'])
                 ->whereHas('election_type', function ($q) use ($filter) {
-                    if ($filter === 'Student and Local Council Election') {
-                        $q->whereIn('name', ['Student Council Election', 'Local Council Election']);
-                    } else {
-                        $q->where('name', $filter);
-                    }
+                    $q->where('name', $filter);
                 })
                 ->orderBy('created_at', 'desc')
                 ->first();

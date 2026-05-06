@@ -123,19 +123,24 @@ class AddElection extends Component
         $this->selectedPositions = [];
 
         if ($value == 1) {
-            $this->studentCouncilPositions = Position::where('election_type_id', '2')->pluck('name', 'id');
-            $this->localCouncilPositions = Position::where('election_type_id', '3')->pluck('name', 'id');
-            $this->positions = $this->studentCouncilPositions->merge($this->localCouncilPositions);
-            $this->positions = array_combine(range(1, count($this->positions)), array_values($this->positions->toArray()));
+            $studentPositions = Position::where('election_type_id', '2')->pluck('name', 'id');
+            $localPositions = Position::where('election_type_id', '3')->pluck('name', 'id');
+
+            $this->studentCouncilPositions = $studentPositions->toArray();
+            $this->localCouncilPositions = $localPositions->toArray();
+            $this->positions = $studentPositions->merge($localPositions)->toArray();
         } elseif ($value == 2) {
-            $this->studentCouncilPositions = Position::where('election_type_id', '2')->pluck('name', 'id');
-            $this->positions = $this->studentCouncilPositions->toArray();
+            $studentPositions = Position::where('election_type_id', '2')->pluck('name', 'id');
+            $this->studentCouncilPositions = $studentPositions->toArray();
+            $this->positions = $this->studentCouncilPositions;
         } elseif ($value == 3) {
-            $this->localCouncilPositions = Position::where('election_type_id', '3')->pluck('name', 'id');
-            $this->positions = $this->localCouncilPositions->toArray();
+            $localPositions = Position::where('election_type_id', '3')->pluck('name', 'id');
+            $this->localCouncilPositions = $localPositions->toArray();
+            $this->positions = $this->localCouncilPositions;
         } else {
             $this->studentCouncilPositions = [];
             $this->localCouncilPositions = [];
+            $this->positions = [];
         }
 
         $this->selectedPositions = array_keys($this->positions);
